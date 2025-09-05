@@ -243,6 +243,9 @@ def get_groq_client():
 def generate_question(question_type: str, context: str, difficulty: str = "medium") -> Dict[str, Any]:
     """Generate a question of specified type using Groq API."""
     
+    print(f"Generating {question_type} question with context length: {len(context)}")
+    print(f"GROQ_API_KEY is set: {bool(os.getenv('GROQ_API_KEY'))}")
+    
     # Hardcoded prompts for each question type
     prompts = {
         "mcq": f"""Generate a multiple choice question based on the following context. The question should have exactly 4 options (A, B, C, D) with only one correct answer. Make it {difficulty} difficulty.
@@ -311,7 +314,7 @@ Format your response as JSON:
         client = get_groq_client()
         
         response = client.chat.completions.create(
-            model="llama-3.1-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": "You are an expert question paper generator. Generate high-quality educational questions based on the provided context. Always respond with valid JSON format."},
                 {"role": "user", "content": prompts[question_type]}
@@ -336,6 +339,9 @@ Format your response as JSON:
         
     except Exception as e:
         print(f"Groq API error: {e}")
+        print(f"Error type: {type(e).__name__}")
+        print(f"GROQ_API_KEY is set: {bool(os.getenv('GROQ_API_KEY'))}")
+        print(f"GROQ_API_KEY value: {os.getenv('GROQ_API_KEY', 'NOT_SET')[:10]}..." if os.getenv('GROQ_API_KEY') else "NOT_SET")
         # Fallback response
         return {
             "question": f"Sample {question_type} question: Explain the key concepts from the provided context.",
