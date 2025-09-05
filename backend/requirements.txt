@@ -2,7 +2,9 @@ fastapi
 uvicorn[standard]
 sentence-transformers
 faiss-cpu
-groq
+openai
 python-multipart
 pydantic
 python-dotenv
+python-docx
+reportlab
