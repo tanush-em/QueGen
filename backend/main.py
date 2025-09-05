@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
-from openai import OpenAI
+from groq import Groq
 from dotenv import load_dotenv
 from docx import Document
 from reportlab.lib.pagesizes import letter
@@ -86,12 +86,6 @@ QUESTION_CATEGORIES = {
 }
 
 # Pydantic models
-class QuestionPaperRequest(BaseModel):
-    categories: Dict[str, int] = Field(..., description="Number of questions per category")
-    total_marks: Optional[int] = Field(None, description="Total marks for the paper")
-    difficulty: Optional[str] = Field("medium", description="Difficulty level: easy, medium, hard")
-    subject: Optional[str] = Field("General", description="Subject name")
-    duration: Optional[int] = Field(60, description="Duration in minutes")
 
 class Question(BaseModel):
     id: str
@@ -239,15 +233,15 @@ def retrieve_relevant_docs(query: str, k: int = 5) -> List[Dict[str, Any]]:
     
     return relevant_docs
 
-def get_openai_client():
-    """Get OpenAI client with API key."""
-    api_key = os.getenv("OPENAI_API_KEY")
+def get_groq_client():
+    """Get Groq client with API key."""
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        raise ValueError("OPENAI_API_KEY not found in environment variables")
-    return OpenAI(api_key=api_key)
+        raise ValueError("GROQ_API_KEY not found in environment variables")
+    return Groq(api_key=api_key)
 
 def generate_question(question_type: str, context: str, difficulty: str = "medium") -> Dict[str, Any]:
-    """Generate a question of specified type using OpenAI API."""
+    """Generate a question of specified type using Groq API."""
     
     # Hardcoded prompts for each question type
     prompts = {
@@ -314,10 +308,10 @@ Format your response as JSON:
     }
 
     try:
-        client = get_openai_client()
+        client = get_groq_client()
         
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="llama-3.1-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are an expert question paper generator. Generate high-quality educational questions based on the provided context. Always respond with valid JSON format."},
                 {"role": "user", "content": prompts[question_type]}
@@ -341,7 +335,7 @@ Format your response as JSON:
             }
         
     except Exception as e:
-        print(f"OpenAI API error: {e}")
+        print(f"Groq API error: {e}")
         # Fallback response
         return {
             "question": f"Sample {question_type} question: Explain the key concepts from the provided context.",
