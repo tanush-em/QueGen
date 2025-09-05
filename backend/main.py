@@ -490,10 +490,20 @@ async def upload_notes(files: List[UploadFile] = File(...)):
 
 @app.post("/generate_paper", response_model=QuestionPaper)
 async def generate_paper(
-    request: QuestionPaperRequest,
+    categories: str = Form(...),
+    subject: str = Form("General"),
+    duration: int = Form(60),
+    difficulty: str = Form("medium"),
+    total_marks: int = Form(0),
     session_id: str = Form(None)
 ):
     """Generate a question paper based on requirements."""
+    
+    # Parse categories from JSON string
+    try:
+        categories_dict = json.loads(categories)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid categories format")
     
     # Load index for the session
     load_faiss_index(session_id)
@@ -502,7 +512,7 @@ async def generate_paper(
         raise HTTPException(status_code=400, detail="No notes available. Please upload notes first.")
     
     # Validate categories
-    for category in request.categories:
+    for category in categories_dict:
         if category not in QUESTION_CATEGORIES:
             raise HTTPException(status_code=400, detail=f"Invalid category: {category}")
     
@@ -510,7 +520,7 @@ async def generate_paper(
     questions = []
     question_id = 1
     
-    for category, count in request.categories.items():
+    for category, count in categories_dict.items():
         if count <= 0:
             continue
             
@@ -525,7 +535,7 @@ async def generate_paper(
                 context = "\n\n".join([doc["content"] for doc in documents[:2]])
             
             # Generate question
-            question_data = generate_question(category, context, request.difficulty)
+            question_data = generate_question(category, context, difficulty)
             
             question = Question(
                 id=str(question_id),
@@ -534,23 +544,23 @@ async def generate_paper(
                 options=question_data.get("options"),
                 correct_answer=question_data.get("correct_answer"),
                 marks=category_info["marks_per_question"],
-                difficulty=request.difficulty
+                difficulty=difficulty
             )
             
             questions.append(question)
             question_id += 1
     
     # Calculate total marks
-    total_marks = sum(q.marks for q in questions)
+    calculated_total_marks = sum(q.marks for q in questions)
     
     # Create question paper
     paper_id = str(uuid.uuid4())
     question_paper = QuestionPaper(
         id=paper_id,
-        subject=request.subject,
-        total_marks=total_marks,
-        duration=request.duration,
-        difficulty=request.difficulty,
+        subject=subject,
+        total_marks=calculated_total_marks,
+        duration=duration,
+        difficulty=difficulty,
         generated_at=datetime.now().isoformat(),
         questions=questions
     )
